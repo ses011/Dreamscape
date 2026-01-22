@@ -1,0 +1,28 @@
+{
+  "name": "dreamscape",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ses011/Dreamscape.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ses011/Dreamscape/issues"
+  },
+  "homepage": "https://github.com/ses011/Dreamscape#readme",
+  "description": "",
+  "dependencies": {
+    "canvas": "^3.2.1",
+    "express": "^5.2.1",
+    "jimp": "^1.6.0",
+    "jsdom": "^27.4.0",
+    "pkg-config": "^1.1.1",
+    "socket.io": "^4.8.3"
+  }
+}
