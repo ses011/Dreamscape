@@ -8,6 +8,7 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: false })
         console.log("An error occurred! " + err);
     });
 
+
 let canvasFrame = document.getElementById("canvasFrame"); // canvasFrame is the id of <canvas>
 let context = canvasFrame.getContext("2d");
 let src = new cv.Mat(height, width, cv.CV_8UC4);
