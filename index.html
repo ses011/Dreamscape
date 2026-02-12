@@ -6,25 +6,93 @@
   <title>Dreamscape
 
   </title>
+
+  <script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady();"></script>
 </head>
 
 <body>
   <h2>Welcome to Dreamscape</h2>
-  <p id="status">OpenCV.js is loading...</p>
-  <video id="videoInput"></video>
+  <video id="videoInput" width="640" height="480" hidden="true"></video>
 
   <div class="inputoutput">
-    <canvas id="canvasFrame"></canvas>
-
     <canvas id="canvasOutput"></canvas>
-    <div class="caption">canvasOutput</div>
   </div>
-  <div class="dom">
-    <button>Black and White</button>
 
-  </div>
-  <script src="script.js" type="text/javascript"></script>
-  <script async src="opencv.js" type="text/javascript"></script>
+  <script type="text/javascript">
+    const outputCanvas = document.getElementById('canvasOutput');
+    const FPS = 30;
+    let cvReady = false;
+    let width;
+    let height;
+    let video;
+    let vc;
+    let src;
+    let dst;
+    let streaming;
+
+    function onOpenCvReady() {
+      cv['onRuntimeInitialized'] = () => {
+        console.log("OpenCV.js is ready.");
+        cvReady = true;
+
+        video = document.getElementById("videoInput");
+        console.log(video)
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+          .then(function (stream) {
+            video.srcObject = stream;
+            video.play();
+          })
+          .catch(function (err) {
+            console.log("An error occurred! " + err);
+          });
+
+        // console.log(video.videoHeight)
+        // console.log(video)
+        height = video.videoHeight;
+        // console.log(height)
+        width = video.videoWidth;
+        // video.setAttribute('width', width);
+        // video.setAttribute('height', height);
+        // console.log(video)
+        streaming = true;
+        vc = new cv.VideoCapture(video);
+
+        src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+        dst = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+
+
+        setTimeout(processVideo, 0);
+      };
+    }
+
+
+    function gray(src) {
+      cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+      // cv.flip(dst, 1, dst);
+      return dst;
+    }
+
+    function processVideo() {
+      if (!streaming) return;
+
+      let begin = Date.now();
+
+      // stats.begin();
+      vc.read(src);
+      applyOperation(gray)
+
+
+      let delay = 1000 / FPS - (Date.now() - begin);
+      setTimeout(processVideo, delay);
+    }
+
+
+    const applyOperation = (operation) => {
+      operation(src); // Execute the OpenCV function
+      cv.imshow(outputCanvas, dst);
+    };
+
+  </script>
 </body>
 
 </html>

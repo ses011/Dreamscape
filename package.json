@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node scripts/app.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +24,8 @@
     "jimp": "^1.6.0",
     "jsdom": "^27.4.0",
     "pkg-config": "^1.1.1",
+    "require": "^0.4.4",
+    "requirejs": "^2.3.8",
     "socket.io": "^4.8.3"
   }
 }
