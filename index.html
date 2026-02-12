@@ -84,6 +84,7 @@
       // stats.begin();
       vc.read(src);
       applyOperation(gray)
+      applyOperation(gaussian)
 
 
       let delay = 1000 / FPS - (Date.now() - begin);
