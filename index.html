@@ -72,6 +72,10 @@
       return dst;
     }
 
+    function gaussian(src) {
+      return cv.GaussianBlur(src, (3, 3),0)
+    }
+
     function processVideo() {
       if (!streaming) return;
 
