@@ -6,7 +6,7 @@
   <title>Dreamscape
 
   </title>
-
+  <link rel="stylesheet" href="style.css">
   <script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady();"></script>
 </head>
 
@@ -72,6 +72,21 @@
       return dst;
     }
 
+    function cannyRainbow(src) {
+      cv.Canny(src, dst, 40, 90, 3, false)
+
+      // let hue = map(angle, -PI, PI, 0, 360); //create a color wheel
+
+      // let col = color(hue, 100, constrain(magnitude, 0, 100));
+      // let idx = 4 * (x + y * w);
+
+      // pixels[idx] = red(col);
+      // pixels[idx + 1] = green(col);
+      // pixels[idx + 2] = blue(col);
+      // pixels[idx + 3] = 255;
+      return dst
+    }
+
     function processVideo() {
       if (!streaming) return;
 
@@ -79,7 +94,7 @@
 
       // stats.begin();
       vc.read(src);
-      applyOperation(gray)
+      applyOperation(cannyRainbow)
 
 
       let delay = 1000 / FPS - (Date.now() - begin);
