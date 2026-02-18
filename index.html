@@ -21,6 +21,7 @@
   <script type="text/javascript">
     const outputCanvas = document.getElementById('canvasOutput');
     const FPS = 30;
+    let filter
     let cvReady = false;
     let width;
     let height;
@@ -59,7 +60,7 @@
 
         src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
         dst = new cv.Mat(video.height, video.width, cv.CV_8UC4);
-
+        filter = "canny"
 
         setTimeout(processVideo, 0);
       };
@@ -69,6 +70,10 @@
     function gray(src) {
       cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
       // cv.flip(dst, 1, dst);
+      return dst;
+    }
+    function passthrough(src) {
+      dst = src;
       return dst;
     }
 
@@ -94,7 +99,19 @@
 
       // stats.begin();
       vc.read(src);
-      applyOperation(cannyRainbow)
+
+      switch (filter) {
+        case "none":
+          applyOperation(passthrough);
+          break;
+        case "canny":
+          applyOperation(cannyRainbow);
+          break;
+        default:
+          applyOperation(passthrough)
+
+      }
+      cv.imshow(outputCanvas, dst);
 
 
       let delay = 1000 / FPS - (Date.now() - begin);
@@ -104,8 +121,20 @@
 
     const applyOperation = (operation) => {
       operation(src); // Execute the OpenCV function
-      cv.imshow(outputCanvas, dst);
     };
+
+    document.onkeypress = (e) => {
+      console.log(e.key)
+      switch (e.key) {
+        case "0":
+          filter = "none"
+          break;
+        case "c":
+          filter = "canny"
+          break;
+
+      }
+    }
 
   </script>
 </body>
