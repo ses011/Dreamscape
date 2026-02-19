@@ -7,7 +7,7 @@
 
   </title>
   <link rel="stylesheet" href="style.css">
-  <script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady();"></script>
+  <script async src="opencv.js" onload="onOpenCvReady();"></script>
 </head>
 
 <body>
@@ -92,7 +92,7 @@
       return dst
     }
 
-    function processVideo() {
+    async function processVideo() {
       if (!streaming) return;
 
       let begin = Date.now();
@@ -102,13 +102,13 @@
 
       switch (filter) {
         case "none":
-          applyOperation(passthrough);
+          await applyOperation(passthrough);
           break;
         case "canny":
-          applyOperation(cannyRainbow);
+          await applyOperation(cannyRainbow);
           break;
         default:
-          applyOperation(passthrough)
+          await applyOperation(passthrough)
 
       }
       cv.imshow(outputCanvas, dst);
@@ -119,9 +119,19 @@
     }
 
 
-    const applyOperation = (operation) => {
+    function applyOperation (operation) {
       operation(src); // Execute the OpenCV function
     };
+
+
+    function saveImage() {
+      outputCanvas.toBlob((blob) =>{
+        // TODO - send image to Flickr API
+
+      });
+
+
+    }
 
     document.onkeypress = (e) => {
       console.log(e.key)
@@ -131,6 +141,9 @@
           break;
         case "c":
           filter = "canny"
+          break;
+        case "s":
+          saveImage();
           break;
 
       }
