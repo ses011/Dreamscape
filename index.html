@@ -104,6 +104,9 @@
         case "none":
           await applyOperation(passthrough);
           break;
+        case "gray":
+          await applyOperation(gray);
+          break;
         case "canny":
           await applyOperation(cannyRainbow);
           break;
@@ -119,30 +122,40 @@
     }
 
 
-    function applyOperation (operation) {
+    function applyOperation(operation) {
       operation(src); // Execute the OpenCV function
     };
 
 
     function saveImage() {
-      outputCanvas.toBlob((blob) =>{
-        // TODO - send image to Flickr API
+      outputCanvas.toBlob((blob) => {
+        let url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url;
+        a.download = url
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+
+
+        // TODO - send image to  API
 
       });
-
-
     }
 
     document.onkeypress = (e) => {
       console.log(e.key)
       switch (e.key) {
-        case "0":
-          filter = "none"
-          break;
-        case "c":
+        // case "0":
+        //   filter = "none"
+        //   break;
+        case "a":
           filter = "canny"
           break;
         case "s":
+          filter = "gray"
+          break;
+        case "f":
           saveImage();
           break;
 
