@@ -19,6 +19,8 @@
   </div>
 
   <script type="text/javascript">
+    // let gausianSize = new 
+
     const outputCanvas = document.getElementById('canvasOutput');
     const FPS = 30;
     let filter
@@ -72,24 +74,52 @@
       // cv.flip(dst, 1, dst);
       return dst;
     }
+
     function passthrough(src) {
-      dst = src;
+      dst = src.clone();
       return dst;
     }
 
     function cannyRainbow(src) {
-      cv.Canny(src, dst, 40, 90, 3, false)
+      cv.Canny(src, dst, 100, 100, 3, false)
+      // let temp = src.clone()
+      // temp.convertTo(temp, cv.CV_64F)
 
-      // let hue = map(angle, -PI, PI, 0, 360); //create a color wheel
+      // let dstx = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+      // let dsty = new cv.Mat();
+      // cv.cvtColor(temp, temp, cv.COLOR_RGB2GRAY, 0);
+      // You can try more different parameters
+      // cv.Sobel(temp, dstx, cv.CV_64F, 1, 0, 3, 1, 0, cv.BORDER_DEFAULT);
+      // cv.convertScaleAbs(dstx, dstx, 1, 0);
+      // cv.Sobel(src, dsty, cv.CV_64F, 0, 1, 3, 1, 0, cv.BORDER_DEFAULT);
+      // cv.imshow('canvasOutputx', dstx);
+      // cv.imshow('canvasOutputy', dsty);
+      // src.delete(); dstx.delete(); dsty.delete();
 
-      // let col = color(hue, 100, constrain(magnitude, 0, 100));
-      // let idx = 4 * (x + y * w);
+      // cv.Sobel(src, gradY, cv.CV_8UC4, 0, 1, 3, 1, 0, cv.BORDER_DEFAULT)
 
-      // pixels[idx] = red(col);
-      // pixels[idx + 1] = green(col);
-      // pixels[idx + 2] = blue(col);
-      // pixels[idx + 3] = 255;
-      return dst
+      // for (let y = 0; y < video.height; y++) {
+
+      //   for (let x = 0; x < video.width; x++) {
+      //     let pixel = dst.ucharPtr(y, x)
+
+      //     let angle = Math.atan2(gradY.ucharPtr(y, x), gradX.ucharPtr(y, x)); 
+
+      //     let hue = (angle + Math.PI) / (Math.PI * 2) * 360 
+      //     // let col = color(hue, 100, constrain(magnitude, 0, 100));
+
+      //     pixel[0] = hue;
+      //     pixel[1] = 100;
+
+      //     pixel[2] = 100
+
+
+
+      //   }
+      // }
+      // console.log(`${dst.ucharPtr(299, 200)}\n\n`)
+
+      return dst;
     }
 
     async function processVideo() {
