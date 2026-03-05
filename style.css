@@ -1,3 +1,26 @@
+@property --grad-top {
+    syntax: '<color>';
+    inherits: false;
+    initial-value: #D000FF;
+}
+
+@property --text-color {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: white;
+}
+
+@keyframes colorShift {
+    0%        { --grad-top: #D000FF; --text-color: white; }
+    20%       { --grad-top: #FF0055; --text-color: white; }
+    40%       { --grad-top: #0037FF; --text-color: white; }
+    60%       { --grad-top: #00C9A0; --text-color: white; }
+    72%       { --grad-top: #00C9A0; --text-color: white; }
+    80%       { --grad-top: #C9FF7C;  --text-color: black; }
+    88%       { --grad-top: #C9FF7C;  --text-color: black; }
+    100%      { --grad-top: #D000FF; --text-color: white; }
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -30,10 +53,11 @@ html, body {
     flex-direction: column;
     justify-content: space-between;
     padding: 60px 60px 60px 60px;
-    color: white;
+    color: var(--text-color);
     font-family: 'Figtree', sans-serif;
     font-weight: 500;
-    background: linear-gradient(to bottom, #0037ff 0%, #e8e8e8 125.74%);
+    background: linear-gradient(to bottom, var(--grad-top) 0%, #e8e8e8 125.74%);
+    animation: colorShift 20s ease-in-out infinite;
     overflow: hidden;
 }
 
