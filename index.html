@@ -7,15 +7,60 @@
 
   </title>
   <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500&display=swap" rel="stylesheet">
   <script async src="opencv.js" onload="onOpenCvReady();"></script>
 </head>
 
 <body>
-  <h2>Welcome to Dreamscape</h2>
   <video id="videoInput" width="640" height="480" hidden="true"></video>
 
   <div class="inputoutput">
     <canvas id="canvasOutput"></canvas>
+  </div>
+
+  <div class="sidebar">
+    <!-- Display Title Section -->
+    <div class="sidebar-title">
+      <p class="sidebar-headline">Play + Print the moment</p>
+      <div class="sidebar-timer-row">
+        <span>Image timer</span>
+        <span id="timerDisplay">2:00</span>
+      </div>
+      <p class="sidebar-subtitle">If time runs out, we'll snap a surprise last-second photo! 📸😄</p>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="sidebar-filters">
+      <p class="sidebar-filter-heading">Play with our filters</p>
+      <div class="sidebar-filter-grid">
+        <div class="filter-option" onclick="filter='canny'">
+          <div class="filter-preview"></div>
+          <span>Canny Edge</span>
+        </div>
+        <div class="filter-option" onclick="filter='gray'">
+          <div class="filter-preview"></div>
+          <span>Grayscale</span>
+        </div>
+        <div class="filter-option" onclick="filter='canny'">
+          <div class="filter-preview"></div>
+          <span>Size Up</span>
+        </div>
+        <div class="filter-option" onclick="filter='gray'">
+          <div class="filter-preview"></div>
+          <span>Group</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Download Section -->
+    <div class="sidebar-download">
+      <div class="download-thumb"></div>
+      <div class="download-text">
+        <p class="download-title">Download your image</p>
+        <p class="download-url">dreamscape.cad.rit.edu</p>
+      </div>
+    </div>
   </div>
 
   <script type="text/javascript">

@@ -1,4 +1,142 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: black;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.inputoutput {
+    width: 100vh;
+    height: 100vh;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.sidebar {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 60px 60px 60px 60px;
+    color: white;
+    font-family: 'Figtree', sans-serif;
+    font-weight: 500;
+    background: linear-gradient(to bottom, #0037ff 0%, #e8e8e8 125.74%);
+    overflow: hidden;
+}
+
+/* Display Title */
+.sidebar-title {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sidebar-headline {
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    line-height: 1.1;
+}
+
+.sidebar-timer-row {
+    display: flex;
+    gap: 16px;
+    align-items: baseline;
+    font-size: clamp(2rem, 4vw, 3.5rem);
+}
+
+.sidebar-subtitle {
+    font-size: clamp(0.85rem, 1.1vw, 1.1rem);
+    opacity: 0.9;
+}
+
+/* Filter Section */
+.sidebar-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.sidebar-filter-heading {
+    font-size: clamp(1rem, 1.4vw, 1.4rem);
+}
+
+.sidebar-filter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.filter-option {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+
+.filter-preview {
+    width: 60px;
+    height: 60px;
+    background: #d9d9d9;
+    flex-shrink: 0;
+    border-radius: 4px;
+}
+
+.filter-option span {
+    font-size: clamp(0.9rem, 1.3vw, 1.3rem);
+    white-space: nowrap;
+}
+
+/* Download Section */
+.sidebar-download {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.download-thumb {
+    width: 100px;
+    height: 100px;
+    background: #d9d9d9;
+    flex-shrink: 0;
+    border-radius: 4px;
+}
+
+.download-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.download-title {
+    font-size: clamp(1rem, 1.4vw, 1.4rem);
+}
+
+.download-url {
+    font-size: clamp(0.85rem, 1.1vw, 1.1rem);
+    opacity: 0.7;
+}
+
 #canvasOutput {
     -webkit-transform: scaleX(-1);
-    transform: scaleX(-1)
+    transform: scaleX(-1);
+    width: 100vh;
+    height: 100vh;
+    object-fit: cover;
 }
