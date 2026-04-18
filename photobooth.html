@@ -12,7 +12,7 @@
 
 <body>
     <h2>Welcome to Dreamscape</h2>
-    <video id="videoInput" width="640" height="480" hidden="true"></video>
+    <video id="videoInput" width="960" height="720" hidden="true"></video>
 
     <div class="inputoutput">
         <canvas id="canvasOutput"></canvas>
@@ -65,7 +65,7 @@
 
                 src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
                 dst = new cv.Mat(video.height, video.width, cv.CV_8UC4);
-                filter = "cartoon"
+                filter = "none"
 
                 setTimeout(processVideo, 0);
             };
@@ -74,18 +74,23 @@
 
         function gray(src) {
             cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+            cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA);
+
             // cv.flip(dst, 1, dst);
             return dst;
         }
 
         function passthrough(src) {
-            dst = src.clone();
-            return dst;
+            dst = src;
+            return src;
         }
 
-        function cannyRainbow(src) {
-            cv.Canny(src, dst, 100, 100, 3, false)
+        async function cannyRainbow(src) {
+            await cv.Canny(src, dst, 100, 100, 3, false)
             // let temp = src.clone()
+
+
+
             // temp.convertTo(temp, cv.CV_64F)
 
             // let dstx = new cv.Mat(video.height, video.width, cv.CV_8UC4);
@@ -116,8 +121,6 @@
 
             //     pixel[2] = 100
 
-
-
             //   }
             // }
             // console.log(`${dst.ucharPtr(299, 200)}\n\n`)
@@ -127,7 +130,7 @@
         }
 
 
-        function pixelate(src) {
+        async function pixelate(src) {
             let newWidth = Math.floor(src.cols / pixelSize);
             let newHeight = Math.floor(src.rows / pixelSize);
             let dsize = new cv.Size(newWidth, newHeight);
@@ -135,7 +138,7 @@
 
             // resize smaller
             let temp = new cv.Mat(dsize, cv.CV_8SC4)
-            cv.resize(src, temp, dsize, 0, 0, cv.INTER_LINEAR);
+            await cv.resize(src, temp, dsize, 0, 0, cv.INTER_LINEAR);
             // copy back to src
 
             // rescale up
@@ -169,16 +172,15 @@
             return dst;
         }
 
-        function cartoon(src) {
-            let gray = new cv.Mat();
-            let edges = new cv.Mat();
-            let temp = new cv.Mat();
+        async function cartoon(src) {
+            let temp = new cv.Mat(new cv.Size(video.width, video.height), cv.CV_8SC4);
+            let edges = new cv.Mat(new cv.Size(video.width, video.height), cv.CV_8SC4);
 
-            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-            cv.medianBlur(gray, gray, 3);
+            cv.cvtColor(src, temp, cv.COLOR_RGBA2GRAY);
+            await cv.medianBlur(temp, temp, 3);
 
-            cv.adaptiveThreshold(
-                gray,
+            await cv.adaptiveThreshold(
+                temp,
                 edges,
                 255,
                 cv.ADAPTIVE_THRESH_MEAN_C,
@@ -187,8 +189,8 @@
                 5
             );
 
-            cv.GaussianBlur(src, temp, new cv.Size(3, 3), 0);
-            cv.cvtColor(edges, edges, cv.COLOR_GRAY2RGBA);
+            await cv.GaussianBlur(src, temp, new cv.Size(3, 3), 0);
+            await cv.cvtColor(edges, edges, cv.COLOR_GRAY2RGBA);
 
             cv.bitwise_and(src, edges, dst);
 
@@ -212,29 +214,24 @@
                     applyOperation(passthrough);
                     break;
                 case "gray":
-                    applyOperation(gray);
+                    src = applyOperation(gray);
+                    if (doPixelate) await applyOperation(pixelate);
                     break;
                 case "canny":
-                    applyOperation(cannyRainbow);
+                    await applyOperation(cannyRainbow);
                     break;
                 case "cartoon":
-                    applyOperation(cartoon);
-                    break;
-                case "pixelate":
-                    src = applyOperation(cartoon);
-                    applyOperation(pixelate);
+                    src = await applyOperation(cartoon);
+                    if (doPixelate) await applyOperation(pixelate);
                     break;
                 default:
-                    applyOperation(passthrough)
-
+                    applyOperation(passthrough);
             }
             cv.imshow(outputCanvas, dst);
-
 
             let delay = 1000 / FPS - (Date.now() - begin);
             setTimeout(processVideo, delay);
         }
-
 
         function applyOperation(operation) {
             return operation(src); // Execute the OpenCV function
@@ -251,17 +248,13 @@
                 document.body.removeChild(a)
             });
 
-
             // TODO - send image to  API
 
             // const image = outputCanvas.toDataURL("image/png").replace("image/png", 'image/octet-stream')
             // const path = randomString(12)
             // window.localStorage.setItem(path, image)
             // console.log(`saved ${path}`)
-
-
         }
-
 
         function randomString(length) {
             var result = '';
@@ -285,7 +278,7 @@
                     filter = "cartoon"
                     break;
                 case "p":
-                    filter = "pixelate"
+                    doPixelate = !doPixelate;
                     break;
                 case "1":
                     pixelSize = 5
@@ -300,12 +293,12 @@
                     if (gutterSize < pixelSize - 3) gutterSize++;
                     break;
                 case "ArrowUp":
-                    pixelSize++
+                    pixelSize += 0.45
                     break;
                 case "ArrowDown":
-                    if (pixelSize > 1) pixelSize--
+                    if (pixelSize > 1.45) pixelSize -= 0.45
                     break;
-                case "f":
+                case "Enter":
                     saveImage();
                     break;
             }
