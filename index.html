@@ -2,197 +2,457 @@
 <html>
 
 <head>
-  <meta charset="utf-8">
-  <title>Dreamscape
+    <meta charset="utf-8">
+    <title>Dreamscape
 
-  </title>
-  <link rel="stylesheet" href="style.css">
-  <script async src="opencv.js" onload="onOpenCvReady();"></script>
+    </title>
+    <link rel="stylesheet" href="style.css">
+    <script async src="opencv.js" onload="onOpenCvReady();"></script>
 </head>
 
 <body>
-  <h2>Welcome to Dreamscape</h2>
-  <video id="videoInput" width="640" height="480" hidden="true"></video>
+    <video id="videoInput" width="640" height="480" hidden="true"></video>
 
-  <div class="inputoutput">
-    <canvas id="canvasOutput"></canvas>
-  </div>
+    <div class="inputoutput">
+        <canvas id="canvasOutput"></canvas>
+    </div>
 
-  <script type="text/javascript">
-    // let gausianSize = new 
+    <script type="text/javascript">
+        // let gausianSize = new
+        const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        const outputCanvas = document.getElementById('canvasOutput');
+        const OUTPUT_SIZE = 1080;
+        outputCanvas.width = OUTPUT_SIZE;
+        outputCanvas.height = OUTPUT_SIZE;
+        const FPS = 30;
+        const outputFolder = "../images"
+        let pixelSize = 15;
+        let filter
+        let cvReady = false;
+        let width;
+        let height;
+        let video;
+        let vc;
+        let src;
+        let dst;
+        let streaming;
+        let bgSubtractor;
 
-    const outputCanvas = document.getElementById('canvasOutput');
-    const FPS = 30;
-    let filter
-    let cvReady = false;
-    let width;
-    let height;
-    let video;
-    let vc;
-    let src;
-    let dst;
-    let streaming;
+        function onOpenCvReady() {
+            cv['onRuntimeInitialized'] = () => {
+                console.log("OpenCV.js is ready.");
+                cvReady = true;
 
-    function onOpenCvReady() {
-      cv['onRuntimeInitialized'] = () => {
-        console.log("OpenCV.js is ready.");
-        cvReady = true;
+                video = document.getElementById("videoInput");
+                console.log(video)
+                navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                    .then(function (stream) {
+                        video.srcObject = stream;
+                        video.play();
+                    })
+                    .catch(function (err) {
+                        console.log("An error occurred! " + err);
+                    });
 
-        video = document.getElementById("videoInput");
-        console.log(video)
-        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-          .then(function (stream) {
-            video.srcObject = stream;
-            video.play();
-          })
-          .catch(function (err) {
-            console.log("An error occurred! " + err);
-          });
+                // console.log(video.videoHeight)
+                // console.log(video)
+                height = video.videoHeight;
+                // console.log(height)
+                width = video.videoWidth;
+                // video.setAttribute('width', width);
+                // video.setAttribute('height', height);
+                // console.log(video)
+                streaming = true;
+                vc = new cv.VideoCapture(video);
 
-        // console.log(video.videoHeight)
-        // console.log(video)
-        height = video.videoHeight;
-        // console.log(height)
-        width = video.videoWidth;
-        // video.setAttribute('width', width);
-        // video.setAttribute('height', height);
-        // console.log(video)
-        streaming = true;
-        vc = new cv.VideoCapture(video);
+                src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+                dst = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+                filter = "pixelate"
+                bgSubtractor = new cv.BackgroundSubtractorMOG2(500, 16, false);
 
-        src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
-        dst = new cv.Mat(video.height, video.width, cv.CV_8UC4);
-        filter = "canny"
-
-        setTimeout(processVideo, 0);
-      };
-    }
-
-
-    function gray(src) {
-      cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
-      // cv.flip(dst, 1, dst);
-      return dst;
-    }
-
-    function passthrough(src) {
-      dst = src.clone();
-      return dst;
-    }
-
-    function cannyRainbow(src) {
-      cv.Canny(src, dst, 100, 100, 3, false)
-      // let temp = src.clone()
-      // temp.convertTo(temp, cv.CV_64F)
-
-      // let dstx = new cv.Mat(video.height, video.width, cv.CV_8UC4);
-      // let dsty = new cv.Mat();
-      // cv.cvtColor(temp, temp, cv.COLOR_RGB2GRAY, 0);
-      // You can try more different parameters
-      // cv.Sobel(temp, dstx, cv.CV_64F, 1, 0, 3, 1, 0, cv.BORDER_DEFAULT);
-      // cv.convertScaleAbs(dstx, dstx, 1, 0);
-      // cv.Sobel(src, dsty, cv.CV_64F, 0, 1, 3, 1, 0, cv.BORDER_DEFAULT);
-      // cv.imshow('canvasOutputx', dstx);
-      // cv.imshow('canvasOutputy', dsty);
-      // src.delete(); dstx.delete(); dsty.delete();
-
-      // cv.Sobel(src, gradY, cv.CV_8UC4, 0, 1, 3, 1, 0, cv.BORDER_DEFAULT)
-
-      // for (let y = 0; y < video.height; y++) {
-
-      //   for (let x = 0; x < video.width; x++) {
-      //     let pixel = dst.ucharPtr(y, x)
-
-      //     let angle = Math.atan2(gradY.ucharPtr(y, x), gradX.ucharPtr(y, x)); 
-
-      //     let hue = (angle + Math.PI) / (Math.PI * 2) * 360 
-      //     // let col = color(hue, 100, constrain(magnitude, 0, 100));
-
-      //     pixel[0] = hue;
-      //     pixel[1] = 100;
-
-      //     pixel[2] = 100
+                setTimeout(processVideo, 0);
+            };
+        }
 
 
+        // Applies the foreground mask as the alpha channel of mat,
+        // making background pixels fully transparent.
+        function applyForegroundMask(mat, mask) {
+            let maskScaled = new cv.Mat();
+            if (mask.cols !== mat.cols || mask.rows !== mat.rows) {
+                cv.resize(mask, maskScaled, new cv.Size(mat.cols, mat.rows), 0, 0, cv.INTER_NEAREST);
+            } else {
+                mask.copyTo(maskScaled);
+            }
 
-      //   }
-      // }
-      // console.log(`${dst.ucharPtr(299, 200)}\n\n`)
+            // Close holes and dilate slightly to fill gaps around edges
+            let kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(9, 9));
+            cv.morphologyEx(maskScaled, maskScaled, cv.MORPH_CLOSE, kernel);
+            cv.dilate(maskScaled, maskScaled, kernel);
+            kernel.delete();
 
-      return dst;
-    }
+            // Soft edge: blur the mask so the person doesn't have a hard cutout edge
+            cv.GaussianBlur(maskScaled, maskScaled, new cv.Size(15, 15), 0);
 
-    async function processVideo() {
-      if (!streaming) return;
+            // Write mask values into the alpha channel of mat
+            const data = mat.data;
+            const maskData = maskScaled.data;
+            for (let i = 0; i < maskData.length; i++) {
+                data[i * 4 + 3] = maskData[i];
+            }
 
-      let begin = Date.now();
+            maskScaled.delete();
+        }
 
-      // stats.begin();
-      vc.read(src);
+        function gray(src) {
+            cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+            // cv.flip(dst, 1, dst);
+            return dst;
+        }
 
-      switch (filter) {
-        case "none":
-          await applyOperation(passthrough);
-          break;
-        case "gray":
-          await applyOperation(gray);
-          break;
-        case "canny":
-          await applyOperation(cannyRainbow);
-          break;
-        default:
-          await applyOperation(passthrough)
+        function passthrough(src) {
+            dst = src.clone();
+            return dst;
+        }
 
-      }
-      cv.imshow(outputCanvas, dst);
+        function cannyRainbow(src) {
+            cv.Canny(src, dst, 100, 100, 3, false)
+            // let temp = src.clone()
+            // temp.convertTo(temp, cv.CV_64F)
+
+            // let dstx = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+            // let dsty = new cv.Mat();
+            // cv.cvtColor(temp, temp, cv.COLOR_RGB2GRAY, 0);
+            // You can try more different parameters
+            // cv.Sobel(temp, dstx, cv.CV_64F, 1, 0, 3, 1, 0, cv.BORDER_DEFAULT);
+            // cv.convertScaleAbs(dstx, dstx, 1, 0);
+            // cv.Sobel(src, dsty, cv.CV_64F, 0, 1, 3, 1, 0, cv.BORDER_DEFAULT);
+            // cv.imshow('canvasOutputx', dstx);
+            // cv.imshow('canvasOutputy', dsty);
+            // src.delete(); dstx.delete(); dsty.delete();
+
+            // cv.Sobel(src, gradY, cv.CV_8UC4, 0, 1, 3, 1, 0, cv.BORDER_DEFAULT)
+
+            // for (let y = 0; y < video.height; y++) {
+
+            //   for (let x = 0; x < video.width; x++) {
+            //     let pixel = dst.ucharPtr(y, x)
+
+            //     let angle = Math.atan2(gradY.ucharPtr(y, x), gradX.ucharPtr(y, x));
+
+            //     let hue = (angle + Math.PI) / (Math.PI * 2) * 360
+            //     // let col = color(hue, 100, constrain(magnitude, 0, 100));
+
+            //     pixel[0] = hue;
+            //     pixel[1] = 100;
+
+            //     pixel[2] = 100
 
 
-      let delay = 1000 / FPS - (Date.now() - begin);
-      setTimeout(processVideo, delay);
-    }
+
+            //   }
+            // }
+            // console.log(`${dst.ucharPtr(299, 200)}\n\n`)
+            // cv.bitwise_and(src, dst, dst);
+
+            return dst;
+        }
 
 
-    function applyOperation(operation) {
-      operation(src); // Execute the OpenCV function
-    };
+        function pixelate(src, fgMask) {
+            // Scale source up to output size
+            let fullSize = new cv.Mat();
+            cv.resize(src, fullSize, new cv.Size(OUTPUT_SIZE, OUTPUT_SIZE), 0, 0, cv.INTER_LINEAR);
+
+            // Convert to grayscale for tone sampling
+            let grayMat = new cv.Mat();
+            cv.cvtColor(fullSize, grayMat, cv.COLOR_RGBA2GRAY);
+
+            // Scale and clean up foreground mask to output size
+            let maskScaled = new cv.Mat();
+            cv.resize(fgMask, maskScaled, new cv.Size(OUTPUT_SIZE, OUTPUT_SIZE), 0, 0, cv.INTER_NEAREST);
+            let kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(9, 9));
+            cv.morphologyEx(maskScaled, maskScaled, cv.MORPH_CLOSE, kernel);
+            cv.dilate(maskScaled, maskScaled, kernel);
+            kernel.delete();
+
+            // #f2f2f2 background canvas
+            dst = new cv.Mat(OUTPUT_SIZE, OUTPUT_SIZE, cv.CV_8UC4);
+            dst.setTo(new cv.Scalar(242, 242, 242, 255));
+
+            for (let y = 0; y < OUTPUT_SIZE; y += pixelSize) {
+                for (let x = 0; x < OUTPUT_SIZE; x += pixelSize) {
+                    const endY = Math.min(y + pixelSize, OUTPUT_SIZE);
+                    const endX = Math.min(x + pixelSize, OUTPUT_SIZE);
+
+                    // Average brightness and foreground coverage of this square
+                    let sum = 0, fgSum = 0, count = 0;
+                    for (let dy = y; dy < endY; dy++) {
+                        for (let dx = x; dx < endX; dx++) {
+                            sum   += grayMat.data[dy * OUTPUT_SIZE + dx];
+                            fgSum += maskScaled.data[dy * OUTPUT_SIZE + dx];
+                            count++;
+                        }
+                    }
+
+                    // Skip background squares — leave them as #f2f2f2
+                    if (fgSum / count < 128) continue;
+
+                    // Map average brightness to 3 tones: black / gray / white
+                    const avg = sum / count;
+                    let tone;
+                    if (avg < 85)       tone = 0;
+                    else if (avg < 170) tone = 128;
+                    else                tone = 255;
+
+                    cv.rectangle(
+                        dst,
+                        new cv.Point(x, y),
+                        new cv.Point(endX - 1, endY - 1),
+                        new cv.Scalar(tone, tone, tone, 255),
+                        -1
+                    );
+                }
+            }
+
+            fullSize.delete();
+            grayMat.delete();
+            maskScaled.delete();
+            return dst;
+        }
+
+        function cartoon(src) {
+            let gray = new cv.Mat();
+            let edges = new cv.Mat();
+            let temp = new cv.Mat();
+
+            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+            cv.medianBlur(gray, gray, 3);
+
+            cv.adaptiveThreshold(
+                gray,
+                edges,
+                255,
+                cv.ADAPTIVE_THRESH_MEAN_C,
+                cv.THRESH_BINARY,
+                9,
+                5
+            );
+
+            cv.GaussianBlur(src, temp, new cv.Size(3, 3), 0);
+            cv.cvtColor(edges, edges, cv.COLOR_GRAY2RGBA);
+
+            cv.bitwise_and(src, edges, dst);
+
+            // gray.delete();
+            // edges.delete();
 
 
-    function saveImage() {
-      outputCanvas.toBlob((blob) => {
-        let url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url;
-        a.download = url
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
+            return dst;
+        }
+
+        function colorize(src) {
+            const intensity = 30;
+
+            let gray = new cv.Mat();
+            let dst = src.clone();
+
+            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+            for (let i = 0; i < gray.data.length; i++) {
+                let v = gray.data[i];
+
+                let r = Math.max(0, Math.min(255, 2 * v - 128));
+                let g = Math.max(0, Math.min(255, 2 * (255 - Math.abs(v - 128))));
+                let b = Math.max(0, Math.min(255, 255 - 2 * v));
+
+                let idx = i * 4;
+
+                dst.data[idx] = dst.data[idx] * (1 - intensity) + r * intensity;
+                dst.data[idx + 1] = dst.data[idx + 1] * (1 - intensity) + g * intensity;
+                dst.data[idx + 2] = dst.data[idx + 2] * (1 - intensity) + b * intensity;
+            }
+
+            gray.delete();
+            return dst;
+        }
+
+        // Really slow, needs performance improvement or removed
+        // function galaxy(src) {
+        //     let dst = src.clone();
+        //     const intensity = intensitySliderC.value / 100;
+
+        //     const time = Date.now() * 0.002;
+
+        //     for (let i = 0; i < dst.data.length; i += 4) {
+        //         let pixelIndex = i / 4;
+        //         let x = pixelIndex % dst.cols;
+        //         let y = Math.floor(pixelIndex / dst.cols);
+
+        //         let nx = x / dst.cols;
+        //         let ny = y / dst.rows;
+
+        //         let r = 128 + 127 * Math.sin(3 * nx + intensity * 5);
+        //         let g = 64 + 64 * Math.sin(5 * ny + intensity * 3);
+        //         let b = 128 + 127 * Math.cos(4 * (nx + ny));
+
+        //         dst.data[i] = dst.data[i] * (1 - intensity) + r * intensity;
+        //         dst.data[i + 1] = dst.data[i + 1] * (1 - intensity) + g * intensity;
+        //         dst.data[i + 2] = dst.data[i + 2] * (1 - intensity) + b * intensity;
+
+        //         let sparkleChance = 0.002 + intensity * 0.01;
+
+        //         if (Math.random() < sparkleChance) {
+        //             let twinkle = 200 + 55 * Math.sin(time + x * 0.1 + y * 0.1);
+
+        //             dst.data[i] = twinkle;
+        //             dst.data[i + 1] = twinkle;
+        //             dst.data[i + 2] = 255;
+
+        //             if (Math.random() < 0.3) {
+        //                 let glow = 100;
+        //                 dst.data[i] = Math.min(255, dst.data[i] + glow);
+        //                 dst.data[i + 1] = Math.min(255, dst.data[i + 1] + glow);
+        //                 dst.data[i + 2] = 255;
+        //             }
+        //         }
+        //     }
+
+        //     return dst;
+        // }
+
+        async function processVideo() {
+            if (!streaming) return;
+
+            let begin = Date.now();
+
+            // stats.begin();
+            vc.read(src);
+
+            // Build foreground mask from raw video frame before any filter
+            let fgMask = new cv.Mat();
+            bgSubtractor.apply(src, fgMask);
+
+            switch (filter) {
+                case "none":
+                    applyOperation(passthrough);
+                    break;
+                case "gray":
+                    applyOperation(gray);
+                    break;
+                case "canny":
+                    applyOperation(cannyRainbow);
+                    break;
+                case "cartoon":
+                    applyOperation(cartoon);
+                    break;
+                case "pixelate":
+                    pixelate(src, fgMask);
+                    break;
+                default:
+                    applyOperation(passthrough)
+
+            }
+            // Knock out the background via the foreground mask (not for pixelate — the halftone speaks for itself)
+            if (filter !== "pixelate") {
+                applyForegroundMask(dst, fgMask);
+            }
+            fgMask.delete();
+
+            // Upscale to output canvas size (pixelate already outputs at OUTPUT_SIZE)
+            if (dst.cols !== OUTPUT_SIZE || dst.rows !== OUTPUT_SIZE) {
+                let displayMat = new cv.Mat();
+                cv.resize(dst, displayMat, new cv.Size(OUTPUT_SIZE, OUTPUT_SIZE), 0, 0, cv.INTER_NEAREST);
+                cv.imshow(outputCanvas, displayMat);
+                displayMat.delete();
+            } else {
+                cv.imshow(outputCanvas, dst);
+            }
 
 
-        // TODO - send image to  API
+            let delay = 1000 / FPS - (Date.now() - begin);
+            setTimeout(processVideo, delay);
+        }
 
-      });
-    }
 
-    document.onkeypress = (e) => {
-      console.log(e.key)
-      switch (e.key) {
-        // case "0":
-        //   filter = "none"
-        //   break;
-        case "a":
-          filter = "canny"
-          break;
-        case "s":
-          filter = "gray"
-          break;
-        case "f":
-          saveImage();
-          break;
+        function applyOperation(operation) {
+            return operation(src); // Execute the OpenCV function
+        };
 
-      }
-    }
+        function saveImage() {
+            outputCanvas.toBlob((blob) => {
+                let url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url;
+                a.download = url
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+            });
 
-  </script>
+
+            // TODO - send image to  API
+
+
+
+            // const image = outputCanvas.toDataURL("image/png").replace("image/png", 'image/octet-stream')
+            // const path = randomString(12)
+            // window.localStorage.setItem(path, image)
+            // console.log(`saved ${path}`)
+
+
+        }
+
+
+        function randomString(length) {
+            var result = '';
+            for (var i = length; i > 0; --i) result += chars[Math.floor(Math.random() * chars.length)];
+            return result;
+        }
+
+        document.onkeydown = (e) => {
+            console.log(e.key)
+            switch (e.key) {
+                // case "0":
+                //   filter = "none"
+                //   break;
+                case "a":
+                    filter = "canny"
+                    break;
+                case "s":
+                    filter = "gray"
+                    break;
+                case "d":
+                    filter = "cartoon"
+                    break;
+                case "p":
+                    filter = "pixelate"
+                    break;
+                case "1":
+                    pixelSize = 5
+                    break;
+                case "2":
+                    pixelSize = 10
+                    break;
+                case "3":
+                    pixelSize = 15
+                    break;
+                case "4":
+                    pixelSize = 20
+                    break;
+                case "ArrowUp":
+                    pixelSize++
+                    break;
+                case "ArrowDown":
+                    if (pixelSize > 1) pixelSize--
+                    break;
+                case "f":
+                    saveImage();
+                    break;
+            }
+        }
+
+    </script>
 </body>
 
 </html>
