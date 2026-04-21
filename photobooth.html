@@ -61,14 +61,8 @@
                         console.log("An error occurred! " + err);
                     });
 
-                // console.log(video.videoHeight)
-                // console.log(video)
                 height = video.videoHeight;
-                // console.log(height)
                 width = video.videoWidth;
-                // video.setAttribute('width', width);
-                // video.setAttribute('height', height);
-                // console.log(video)
                 streaming = true;
                 vc = new cv.VideoCapture(video);
 
@@ -257,25 +251,6 @@
 
         };
 
-        async function colorScaling(src) {
-            let channels = new cv.MatVector();
-
-            channels = await cv.split(holding, channels);
-            // let R = channels.get(0)
-            // let G = channels.get(1)
-            // let B = channels.get(2)
-
-
-
-            // cv.merge(channels, holding)
-
-            // channels.delete()
-            // R.delete()
-            // G.delete()
-            // B.delete()
-            return holding
-        }
-
         function saveImage() {
             outputCanvas.toBlob((blob) => {
                 let url = URL.createObjectURL(blob)
@@ -302,8 +277,6 @@
         }
 
         document.onkeydown = (e) => {
-            // console.log(e.key)
-            
             if (!isNaN(e.key)) {
                 num = e.key.toString();
                 console.log(num)
