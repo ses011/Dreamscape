@@ -25,7 +25,13 @@
         const FPS = 30;
         const outputFolder = "../images"
         let pixelSize = 15;
+        let doPixelate = false;
         let gutterSize = 3;
+
+        let thresholdR = 5
+        let thresholdG = 3
+        let thresholdB = 7
+
         let filter
         let cvReady = false;
         let width;
@@ -34,7 +40,10 @@
         let vc;
         let src;
         let dst;
+        let holding;
         let streaming;
+        let ctx;
+        let num;
 
         function onOpenCvReady() {
             cv['onRuntimeInitialized'] = () => {
@@ -65,7 +74,9 @@
 
                 src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
                 dst = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+                holding = new cv.Mat(video.width, video.height, cv.CV_8UC4)
                 filter = "none"
+
 
                 setTimeout(processVideo, 0);
             };
@@ -82,7 +93,7 @@
 
         function passthrough(src) {
             dst = src;
-            return src;
+            return dst;
         }
 
         async function cannyRainbow(src) {
@@ -140,32 +151,33 @@
             let temp = new cv.Mat(dsize, cv.CV_8SC4)
             await cv.resize(src, temp, dsize, 0, 0, cv.INTER_LINEAR);
             // copy back to src
+            await cv.resize(temp, dst, new cv.Size(src.cols, src.rows), 0, 0, cv.INTER_NEAREST);
 
             // rescale up
 
             // For each pixel in the scaled down image
-            for (let i = 0; i < newHeight; i++) {
-                for (let j = 0; j < newWidth; j++) {
-                    sample = temp.ucharPtr(i, j);
-                    // For each pixel in the increased size range
-                    for (let x = pixelSize * i; x < pixelSize * (i + 1) & x < newHeight; x++) {
-                        for (let y = pixelSize * j; y < pixelSize * (j + 1) & y < newWidth; y++) {
-                            let pixel = dst.ucharPtr(x, y);
-                            // Black gutter
-                            if (i <= gutter || i >= height - gutter) {
-                                pixel[0] = 255
-                                pixel[1] = 255
-                                pixel[2] = 255
-                            }
-                            else {
-                                pixel = sample;
-                            }
+            // for (let i = 0; i < newHeight; i++) {
+            //     for (let j = 0; j < newWidth; j++) {
+            //         sample = temp.ucharPtr(i, j);
+            //         // For each pixel in the increased size range
+            //         for (let x = pixelSize * i; x < pixelSize * (i + 1) & x < newHeight; x++) {
+            //             for (let y = pixelSize * j; y < pixelSize * (j + 1) & y < newWidth; y++) {
+            //                 let pixel = dst.ucharPtr(x, y);
+            //                 // Black gutter
+            //                 if (i <= gutterSize || i >= height - gutterSize) {
+            //                     pixel[0] = 255
+            //                     pixel[1] = 255
+            //                     pixel[2] = 255
+            //                 }
+            //                 else {
+            //                     pixel = sample;
+            //                 }
 
-                        }
-                    }
-                }
+            //             }
+            //         }
+            //     }
 
-            }
+            // }
 
             temp.delete();
 
@@ -194,7 +206,6 @@
 
             cv.bitwise_and(src, edges, dst);
 
-            gray.delete();
             edges.delete();
             temp.delete();
 
@@ -210,9 +221,7 @@
             vc.read(src);
 
             switch (filter) {
-                case "none":
-                    applyOperation(passthrough);
-                    break;
+
                 case "gray":
                     src = applyOperation(gray);
                     if (doPixelate) await applyOperation(pixelate);
@@ -224,18 +233,48 @@
                     src = await applyOperation(cartoon);
                     if (doPixelate) await applyOperation(pixelate);
                     break;
+                case "none":
+
+                    applyOperation(passthrough)
+                    if (doPixelate) await applyOperation(pixelate);
+                    break;
                 default:
-                    applyOperation(passthrough);
+                    break;
             }
+
             cv.imshow(outputCanvas, dst);
+
+            ctx = outputCanvas.getContext('2d');
+            ctx.fillStyle = `rgba(${thresholdR * 10}, ${thresholdG * 10}, ${thresholdB * 10}, 0.7)`;
+            ctx.fillRect(0, 0, video.width, video.height);
 
             let delay = 1000 / FPS - (Date.now() - begin);
             setTimeout(processVideo, delay);
         }
 
-        function applyOperation(operation) {
+        async function applyOperation(operation) {
             return operation(src); // Execute the OpenCV function
+
         };
+
+        async function colorScaling(src) {
+            let channels = new cv.MatVector();
+
+            channels = await cv.split(holding, channels);
+            // let R = channels.get(0)
+            // let G = channels.get(1)
+            // let B = channels.get(2)
+
+
+
+            // cv.merge(channels, holding)
+
+            // channels.delete()
+            // R.delete()
+            // G.delete()
+            // B.delete()
+            return holding
+        }
 
         function saveImage() {
             outputCanvas.toBlob((blob) => {
@@ -263,28 +302,21 @@
         }
 
         document.onkeydown = (e) => {
-            console.log(e.key)
+            // console.log(e.key)
+            
+            if (!isNaN(e.key)) {
+                num = e.key.toString();
+                console.log(num)
+            }
             switch (e.key) {
-                // case "0":
-                //   filter = "none"
-                //   break;
-                case "a":
-                    filter = "canny"
-                    break;
-                case "s":
-                    filter = "gray"
+                case "n":
+                    filter = "none"
                     break;
                 case "d":
                     filter = "cartoon"
                     break;
                 case "p":
                     doPixelate = !doPixelate;
-                    break;
-                case "1":
-                    pixelSize = 5
-                    break;
-                case "2":
-                    pixelSize = 10
                     break;
                 case "ArrowLeft":
                     if (gutterSize > 1) gutterSize--;
@@ -297,6 +329,15 @@
                     break;
                 case "ArrowDown":
                     if (pixelSize > 1.45) pixelSize -= 0.45
+                    break;
+                case "r":
+                    if (!isNaN(num)) thresholdR = num;
+                    break;
+                case "g":
+                    if (!isNaN(num)) thresholdG = num;
+                    break;
+                case "b":
+                    if (!isNaN(num)) thresholdB = num;
                     break;
                 case "Enter":
                     saveImage();
