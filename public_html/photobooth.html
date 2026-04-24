@@ -14,9 +14,10 @@
     <h2>Welcome to Dreamscape</h2>
     <video id="videoInput" width="960" height="720" hidden="true"></video>
 
+    
     <div class="inputoutput">
-        <canvas id="canvasOutput"></canvas>
-        <div id="overlay" style="fill:1px solid #000000;"></div>
+        <canvas id="canvasOutput" width="960" height="720"></canvas>
+        <div id="overlay" width="960" height="720" style="fill:1px solid #000000;"></div>
     </div>
 
     <script type="text/javascript">
@@ -26,17 +27,14 @@
         const outputCanvas = document.getElementById('canvasOutput');
         const FPS = 30;
         const outputFolder = "../images"
-        let posterLevels = 4;
-        let pixelSize = 1;
-        let doPixelate = true;
-        let gutterSize = 3;
-
+        let pixelSize = 15;
+        let doPixelate = false;
 
         let thresholdR = 5
         let thresholdG = 3
         let thresholdB = 7
 
-        let filter
+        let filter;
         let cvReady = false;
         let width;
         let height;
@@ -44,10 +42,7 @@
         let vc;
         let src;
         let dst;
-        let holding;
         let streaming;
-        let ctx;
-        let num;
 
         function onOpenCvReady() {
             cv['onRuntimeInitialized'] = () => {
@@ -65,6 +60,7 @@
                         console.log("An error occurred! " + err);
                     });
 
+
                 height = video.videoHeight;
                 width = video.videoWidth;
                 streaming = true;
@@ -80,22 +76,6 @@
             };
         }
 
-        async function posterize(src) {
-            let levels = Math.max(2, posterLevels);
-            let step = Math.floor(255 / levels);
-            console.log(`step ${step}`);
-
-            const lut = new cv.Mat(1, 256, cv.CV_8U);
-            for (let i = 0; i < 256; i++) {
-                lut.ucharPtr(0, i)[0] = Math.round(i / step) * step;
-            }
-
-            cv.LUT(src, lut, dst);
-            lut.delete();
-
-            return dst;
-        }
-
 
         function gray(src) {
             cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
@@ -107,7 +87,7 @@
 
         function passthrough(src) {
             dst = src;
-            return dst;
+            return src;
         }
 
         async function cannyRainbow(src) {
@@ -160,12 +140,37 @@
             let newHeight = Math.floor(src.rows / pixelSize);
             let dsize = new cv.Size(newWidth, newHeight);
 
-
             // resize smaller
             let temp = new cv.Mat(dsize, cv.CV_8SC4)
             await cv.resize(src, temp, dsize, 0, 0, cv.INTER_LINEAR);
             // copy back to src
             await cv.resize(temp, dst, new cv.Size(src.cols, src.rows), 0, 0, cv.INTER_NEAREST);
+
+            // rescale up
+
+            // For each pixel in the scaled down image
+            // for (let i = 0; i < newHeight; i++) {
+            //     for (let j = 0; j < newWidth; j++) {
+            //         sample = temp.ucharPtr(i, j);
+            //         // For each pixel in the increased size range
+            //         for (let x = pixelSize * i; x < pixelSize * (i + 1) & x < newHeight; x++) {
+            //             for (let y = pixelSize * j; y < pixelSize * (j + 1) & y < newWidth; y++) {
+            //                 let pixel = dst.ucharPtr(x, y);
+            //                 // Black gutter
+            //                 if (i <= gutterSize || i >= height - gutterSize) {
+            //                     pixel[0] = 255
+            //                     pixel[1] = 255
+            //                     pixel[2] = 255
+            //                 }
+            //                 else {
+            //                     pixel = sample;
+            //                 }
+
+            //             }
+            //         }
+            //     }
+
+            // }
 
             temp.delete();
 
@@ -197,8 +202,11 @@
             edges.delete();
             temp.delete();
 
+
             return dst;
         }
+
+
 
         async function processVideo() {
             if (!streaming) return;
@@ -209,7 +217,9 @@
             vc.read(src);
 
             switch (filter) {
-
+                // case "none":
+                //     applyOperation(passthrough);
+                //     break;
                 case "gray":
                     src = applyOperation(gray);
                     if (doPixelate) await applyOperation(pixelate);
@@ -221,34 +231,19 @@
                     src = await applyOperation(cartoon);
                     if (doPixelate) await applyOperation(pixelate);
                     break;
-                case "posterize":
-                    src = await applyOperation(posterize);
-                    if (doPixelate) await applyOperation(pixelate);
-                    break;
-                case "none":
-                    applyOperation(passthrough)
-                    if (doPixelate) await applyOperation(pixelate);
-                    break;
                 default:
-                    break;
+                    applyOperation(passthrough);
             }
-
             cv.imshow(outputCanvas, dst);
-
-            ctx = outputCanvas.getContext('2d');
-            ctx.fillStyle = `rgba(${thresholdR * 10}, ${thresholdG * 10}, ${thresholdB * 10}, 0.7)`;
-            ctx.fillRect(0, 0, video.width, video.height);
 
             let delay = 1000 / FPS - (Date.now() - begin);
             setTimeout(processVideo, delay);
         }
 
-        async function applyOperation(operation) {
+        function applyOperation(operation) {
             return operation(src); // Execute the OpenCV function
-
         };
 
-        let canphoto = true;
         function saveImage() {
             outputCanvas.toBlob((blob) => {
                 let url = URL.createObjectURL(blob)
@@ -256,10 +251,18 @@
                 a.href = url;
                 a.download = url
                 document.body.appendChild(a)
-                a.click()
-                document.body.removeChild(a)
+                a.click();
+                //document.body.removeChild(a)
                 picanimation();
             });
+
+            // TODO - send image to  API
+
+
+            // const image = outputCanvas.toDataURL("image/png").replace("image/png", 'image/octet-stream')
+            // const path = randomString(12)
+            // window.localStorage.setItem(path, image)
+            // console.log(`saved ${path}`)
         }
 
         function randomString(length) {
@@ -268,162 +271,70 @@
             return result;
         }
 
-
-
-
-
-        const animationMap = {
-            big: 'public_html/images/videos/big.webm',
-            magnet: 'public_html/images/videos/magnet.webm',
-            small: 'public_html/images/videos/small.webm',
-            photo: 'public_html/images/videos/take_photo.webm',
-
-        }
-
-
         let preloadA;
         function preloadAnimat() {
             preloadA = document.createElement('video');
-
-
+            //preloadA.src = 'images/videos/take_photo.mp4';
+            //preloadA.src = 'images/videos/take_photo.webm';
+            preloadA.src = 'images/videos/stampexpressionannoyed.webm';
             preloadA.preload = 'auto';
             preloadA.muted = true;
             preloadA.playsInline = true;
-            preloadA.style.display = "none";
-
-            overlaycanvas.appendChild(preloadA);
-            Object.values(animationMap).forEach(src => {
-                const v = document.createElement('video');
-                v.src = src;
-                v.preload = 'auto';
-                v.muted = true;
-                v.load();
-
-            })
-
             preloadA.addEventListener('loadeddata', () => {
                 console.log("Animation video ready");
             });
         }
 
-        function setAnimatioSource(key = "photo") {
-            const newSrc = animationMap[key];
 
-            if (!newSrc) return;
 
-            if (!preloadA) return;
-            //avoid unnecessary reloads
-            if (!preloadA.src.includes(newSrc)) {
-                preloadA.src = newSrc;
-                preloadA.load();
-            }
-        }
         function picanimation() {
             console.log('picanimationcalled');
             // console.log("video element:", preloadA);
             //console.log("readyState:", preloadA?.readyState);
 
-            const key = "photo";
-            const newSrc = animationMap[key];
-            if (!preloadA || !newSrc) return;
+            if (!preloadA) return;
 
-            if (!preloadA.src.includes(newSrc)) {
-                preloadA.src = newSrc;
-                preloadA.load();
-            }
-            if (!overlaycanvas.contains(preloadA)) {
-                overlaycanvas.appendChild(preloadA);
-            }
-            preloadA.style.display = "block";
+            setTimeout(() => {
 
-            preloadA.pause();
-            preloadA.currentTime = 0;
+                if (!overlaycanvas.contains(preloadA)) {
+                    overlaycanvas.appendChild(preloadA);
+                }
 
-            preloadA.onended = null;
+                preloadA.currentTime = 0;
 
+                preloadA.play()
+                    .then(() => {
+                        console.log("video playing");
+                    })
+                    .catch(err => {
+                        console.log("play failed:", err);
+                    });
 
-            preloadA.onended = () => {
-                preloadA.style.display = "none";
-                console.log("video ended");
-                preloadA.pause();
-            };
-
-
-            preloadA.play()
-                .then(() => {
-                    console.log("video playing");
-                })
-                .catch(err => {
-                    console.log("play failed:", err);
-                });
-
+            }, 200);
+            // small visible delay
+            hidevideo();
         }
 
-        // let lastPixelKey = null;
+        function hidevideo() {
 
-        // function pixelanimatin() {
-        //     const key = getAnimationKey();
-
-
-        //     if (key === lastPixelKey) return;
-
-        //     lastPixelKey = key;
-
-        //     const newSrc = animationMap[key];
-
-        //     if (!preloadA || !newSrc) return;
-
-        //     // change video only if needed
-        //     if (!preloadA.src.includes(newSrc)) {
-        //         preloadA.src = newSrc;
-        //         preloadA.load();
-        //     }
-
-        //     preloadA.style.display = "block";
-
-        //     if (!overlaycanvas.contains(preloadA)) {
-        //         overlaycanvas.appendChild(preloadA);
-        //     }
-
-        //     preloadA.style.display = "block";
-
-        //     preloadA.pause();
-        //     preloadA.currentTime = 0;
-
-        //     preloadA.onended = () => {
-        //         preloadA.style.display = "none";
-        //         preloadA.pause();
-        //     };
-
-        //     preloadA.play().catch(err => {
-        //         console.log("pixel animation failed:", err);
-        //     });
-        // }
-
-        // function handlePixelChange() {
-        //     pixelanimatin();
-        // }
-        // function getAnimationKey() {
-        //     console(pixelSize);
-        //     if (pixelSize >= 25) return "big";
-
-        //     if (pixelSize <= 10) return "small";
-        //     return "magnet";
-        // }
-
-
+            preloadA.addEventListener('ended', function () {
+                preloadA.style.display = 'none';
+                console.log('Video ended');
+                preloadA.pause();
+            });
+        }
 
         document.onkeydown = (e) => {
-            if (!isNaN(e.key)) {
-                num = e.key.toString();
-                console.log(num)
-            }
+            console.log(e.key)
             switch (e.key) {
-                case "n":
-                    filter = "none"
+                // case "0":
+                //   filter = "none"
+                //   break;
+                case "a":
+                    filter = "canny"
                     break;
-                case "c":
-                    filter = "posterize"
+                case "s":
+                    filter = "gray"
                     break;
                 case "d":
                     filter = "cartoon"
@@ -431,54 +342,56 @@
                 case "p":
                     doPixelate = !doPixelate;
                     break;
-                case "ArrowLeft":
-                    if (filter === "posterize") {
-                        if (posterLevels > 2) posterLevels--;
-                        console.log(posterLevels);
-                    } else {
-                        if (gutterSize > 1) gutterSize--;
-                    }
+                case "1":
+                    pixelSize = 5
                     break;
-                case "ArrowRight":
-                    if (filter === "posterize") {
-                        if (posterLevels < 15) posterLevels++;
-                        console.log(posterLevels);
-
-                    } else {
-                        if (gutterSize < pixelSize - 3) gutterSize++;
-                    }
+                case "2":
+                    pixelSize = 10
+                    break;
+                case "3":
+                    pixelSize = 15
+                    break;
+                case "4":
+                    pixelSize = 20
                     break;
                 case "ArrowUp":
                     pixelSize += 0.45
-                    //handlePixelChange();
                     break;
                 case "ArrowDown":
                     if (pixelSize > 1.45) pixelSize -= 0.45
-                    //handlePixelChange();
-                    break;
-                case "r":
-                    if (!isNaN(num)) thresholdR = num;
-                    break;
-                case "g":
-                    if (!isNaN(num)) thresholdG = num;
-                    break;
-                case "b":
-                    if (!isNaN(num)) thresholdB = num;
                     break;
                 case "Enter":
-                    if (!canphoto) return;
-
-                    canphoto = false
                     saveImage();
-
-                    setTimeout(() => {
-                        canphoto = true
-                    }, 10000);
-
-
                     break;
             }
         }
+
+
+        // function colorize(src) {
+        //     const intensity = 30;
+
+        //     let gray = new cv.Mat();
+        //     let dst = src.clone();
+
+        //     cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+        //     for (let i = 0; i < gray.data.length; i++) {
+        //         let v = gray.data[i];
+
+        //         let r = Math.max(0, Math.min(255, 2 * v - 128));
+        //         let g = Math.max(0, Math.min(255, 2 * (255 - Math.abs(v - 128))));
+        //         let b = Math.max(0, Math.min(255, 255 - 2 * v));
+
+        //         let idx = i * 4;
+
+        //         dst.data[idx] = dst.data[idx] * (1 - intensity) + r * intensity;
+        //         dst.data[idx + 1] = dst.data[idx + 1] * (1 - intensity) + g * intensity;
+        //         dst.data[idx + 2] = dst.data[idx + 2] * (1 - intensity) + b * intensity;
+        //     }
+
+        //     gray.delete();
+        //     return dst;
+        // }
 
     </script>
 </body>

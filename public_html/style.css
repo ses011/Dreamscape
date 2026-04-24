@@ -65,6 +65,7 @@ body {
     overflow: hidden;
     background: black;
     display: flex;
+    color: white;
     align-items: center;
     justify-content: flex-start;
 }
@@ -192,50 +193,43 @@ body {
 #canvasOutput {
     -webkit-transform: scaleX(-1);
     transform: scaleX(-1);
-    width: 100vh;
-    height: 100vh;
     object-fit: cover;
 }
 
-body {
-    margin: 0;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center; 
-    background: black; 
-}
-
 .inputoutput {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    position: relative;
+    margin: auto;
+    /* center */
 }
 
-canvas {
-    display: block;
+.inputoutput canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 1;
+
 }
+
+
+#canvasOutput {
+    z-index: 1;
+}
+
 
 
 
 #overlay {
     position: absolute;
     top: 0;
-    left: 10;
-    width: 100vh;
-    height: 100vh;
-    z-index: 999;
-    object-fit: cover;
-
-}
-
-#overlay video {
-    position: absolute;
-    bottom: 0;
     left: 0;
+    width: 960px;
+    height: 720px;
+    z-index: 999;
+    pointer-events: none;
+}
+#overlay video {
     width: 100%;
-    height: auto;
+    height: 100%;
 }
 
 video {
