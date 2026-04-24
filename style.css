@@ -197,15 +197,14 @@ body {
     object-fit: cover;
 }
 
-
 body {
     margin: 0;
     height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    background: black;
+    justify-content: center; 
+    background: black; 
 }
 
 .inputoutput {

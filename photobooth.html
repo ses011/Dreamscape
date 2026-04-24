@@ -26,9 +26,11 @@
         const outputCanvas = document.getElementById('canvasOutput');
         const FPS = 30;
         const outputFolder = "../images"
-        let pixelSize = 15;
-        let doPixelate = false;
+        let posterLevels = 4;
+        let pixelSize = 1;
+        let doPixelate = true;
         let gutterSize = 3;
+
 
         let thresholdR = 5
         let thresholdG = 3
@@ -76,6 +78,22 @@
                 preloadAnimat();
                 setTimeout(processVideo, 0);
             };
+        }
+
+        async function posterize(src) {
+            let levels = Math.max(2, posterLevels);
+            let step = Math.floor(255 / levels);
+            console.log(`step ${step}`);
+
+            const lut = new cv.Mat(1, 256, cv.CV_8U);
+            for (let i = 0; i < 256; i++) {
+                lut.ucharPtr(0, i)[0] = Math.round(i / step) * step;
+            }
+
+            cv.LUT(src, lut, dst);
+            lut.delete();
+
+            return dst;
         }
 
 
@@ -149,32 +167,6 @@
             // copy back to src
             await cv.resize(temp, dst, new cv.Size(src.cols, src.rows), 0, 0, cv.INTER_NEAREST);
 
-            // rescale up
-
-            // For each pixel in the scaled down image
-            // for (let i = 0; i < newHeight; i++) {
-            //     for (let j = 0; j < newWidth; j++) {
-            //         sample = temp.ucharPtr(i, j);
-            //         // For each pixel in the increased size range
-            //         for (let x = pixelSize * i; x < pixelSize * (i + 1) & x < newHeight; x++) {
-            //             for (let y = pixelSize * j; y < pixelSize * (j + 1) & y < newWidth; y++) {
-            //                 let pixel = dst.ucharPtr(x, y);
-            //                 // Black gutter
-            //                 if (i <= gutterSize || i >= height - gutterSize) {
-            //                     pixel[0] = 255
-            //                     pixel[1] = 255
-            //                     pixel[2] = 255
-            //                 }
-            //                 else {
-            //                     pixel = sample;
-            //                 }
-
-            //             }
-            //         }
-            //     }
-
-            // }
-
             temp.delete();
 
             return dst;
@@ -229,6 +221,10 @@
                     src = await applyOperation(cartoon);
                     if (doPixelate) await applyOperation(pixelate);
                     break;
+                case "posterize":
+                    src = await applyOperation(posterize);
+                    if (doPixelate) await applyOperation(pixelate);
+                    break;
                 case "none":
                     applyOperation(passthrough)
                     if (doPixelate) await applyOperation(pixelate);
@@ -264,13 +260,6 @@
                 document.body.removeChild(a)
                 picanimation();
             });
-
-            // TODO - send image to  API
-
-            // const image = outputCanvas.toDataURL("image/png").replace("image/png", 'image/octet-stream')
-            // const path = randomString(12)
-            // window.localStorage.setItem(path, image)
-            // console.log(`saved ${path}`)
         }
 
         function randomString(length) {
@@ -433,6 +422,9 @@
                 case "n":
                     filter = "none"
                     break;
+                case "c":
+                    filter = "posterize"
+                    break;
                 case "d":
                     filter = "cartoon"
                     break;
@@ -440,10 +432,21 @@
                     doPixelate = !doPixelate;
                     break;
                 case "ArrowLeft":
-                    if (gutterSize > 1) gutterSize--;
+                    if (filter === "posterize") {
+                        if (posterLevels > 2) posterLevels--;
+                        console.log(posterLevels);
+                    } else {
+                        if (gutterSize > 1) gutterSize--;
+                    }
                     break;
                 case "ArrowRight":
-                    if (gutterSize < pixelSize - 3) gutterSize++;
+                    if (filter === "posterize") {
+                        if (posterLevels < 15) posterLevels++;
+                        console.log(posterLevels);
+
+                    } else {
+                        if (gutterSize < pixelSize - 3) gutterSize++;
+                    }
                     break;
                 case "ArrowUp":
                     pixelSize += 0.45
