@@ -1,0 +1,22 @@
+{
+  "name": "public_html",
+  "version": "1.0.0",
+  "description": "Interactive photobooth New Media capstone project",
+  "main": "index.php",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ses011/Dreamscape.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ses011/Dreamscape/issues"
+  },
+  "homepage": "https://github.com/ses011/Dreamscape#readme",
+  "dependencies": {
+    "mysql": "^2.18.1"
+  }
+}

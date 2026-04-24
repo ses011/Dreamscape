@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Page</title>
+
+</head>
+
+<body>
+    <img id="qr">
+    <!--<img src="https://api.qrserver.com/v1/create-qr-code/?data=https://dreamscape.cad.rit.edu/dream?id=65">-->
+    <script>
+
+        for(let i=1; i<1000;i++){
+
+        }
+   
+        const url = `https://dreamscape.cad.rit.edu/dream?id=${id}`;
+        const encoded = encodeURIComponent(url);
+
+        document.getElementById("qr").src = `https://api.qrserver.com/v1/create-qr-code/?data=${encoded}`;
+
+
+
+    </script>
+</body>
+
+
+
+</html>
