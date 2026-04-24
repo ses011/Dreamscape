@@ -164,3 +164,23 @@ html, body {
     height: 100vh;
     object-fit: cover;
 }
+
+body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; 
+    background: black; 
+}
+
+.inputoutput {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+canvas {
+    display: block;
+}
