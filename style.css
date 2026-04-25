@@ -203,8 +203,8 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center; 
-    background: black; 
+    justify-content: center;
+    background: black;
 }
 
 .inputoutput {
@@ -240,5 +240,6 @@ canvas {
 
 video {
     position: absolute;
+
     z-index: 20;
 }

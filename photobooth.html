@@ -280,6 +280,10 @@
             magnet: 'public_html/images/videos/magnet.webm',
             small: 'public_html/images/videos/small.webm',
             photo: 'public_html/images/videos/take_photo.webm',
+            stampannoy: 'public_html/images/videos/stampexpressionannoyed.webm',
+            stampgood: 'public_html/images/videos/stampgoodjob.webm',
+            stampnervous: 'public_html/images/videos/stampnervous.webm',
+            stampstarryeye: 'public_html/images/videos/stampstarryeyed.webm'
 
         }
 
@@ -321,7 +325,9 @@
                 preloadA.load();
             }
         }
+        let isBusy = false;
         function picanimation() {
+            isBusy = true;
             console.log('picanimationcalled');
             // console.log("video element:", preloadA);
             //console.log("readyState:", preloadA?.readyState);
@@ -362,59 +368,126 @@
 
         }
 
-        // let lastPixelKey = null;
+        let lastPixelKey = null;
 
-        // function pixelanimatin() {
-        //     const key = getAnimationKey();
+        function pixelanimatin() {
+            if (isBusy) return;
+            console.log('pixelanimationcalled');
+            const key = getAnimationKey();
 
 
-        //     if (key === lastPixelKey) return;
+            if (key === lastPixelKey) return;
 
-        //     lastPixelKey = key;
+            lastPixelKey = key;
 
-        //     const newSrc = animationMap[key];
+            const newSrc = animationMap[key];
 
-        //     if (!preloadA || !newSrc) return;
+            if (!preloadA || !newSrc) return;
 
-        //     // change video only if needed
-        //     if (!preloadA.src.includes(newSrc)) {
-        //         preloadA.src = newSrc;
-        //         preloadA.load();
-        //     }
+            // change video only if needed
+            if (!preloadA.src.includes(newSrc)) {
+                preloadA.src = newSrc;
+                preloadA.load();
+            }
 
-        //     preloadA.style.display = "block";
 
-        //     if (!overlaycanvas.contains(preloadA)) {
-        //         overlaycanvas.appendChild(preloadA);
-        //     }
 
-        //     preloadA.style.display = "block";
+            if (!overlaycanvas.contains(preloadA)) {
+                overlaycanvas.appendChild(preloadA);
+            }
 
-        //     preloadA.pause();
-        //     preloadA.currentTime = 0;
+            preloadA.style.display = "block";
 
-        //     preloadA.onended = () => {
-        //         preloadA.style.display = "none";
-        //         preloadA.pause();
-        //     };
+            preloadA.pause();
+            preloadA.currentTime = 0;
 
-        //     preloadA.play().catch(err => {
-        //         console.log("pixel animation failed:", err);
+            preloadA.onended = () => {
+                preloadA.style.display = "none";
+                preloadA.pause();
+            };
+
+            preloadA.play()
+                .then(() => {
+                    console.log("VIDEO IS PLAYING:", preloadA.currentSrc);
+                })
+                .catch(err => {
+                    console.log("PLAY FAILED:", err);
+                });
+        }
+
+        function handlePixelChange() {
+            pixelanimatin();
+        }
+        function getAnimationKey() {
+            console.log(pixelSize);
+            if (pixelSize >= 25) return "big";
+
+            if (pixelSize <= 24) return "small";
+            return "magnet";
+        }
+
+        const stampKeys = [
+            "stampannoy",
+            "stampgood",
+            "stampnervous",
+            "stampstarryeye"
+        ];
+
+        let stampLoopRunning = false;
+        let stampInterval = null;
+
+        function playRandomStamp() {
+            const key = stampKeys[Math.floor(Math.random() * stampKeys.length)];
+            const src = animationMap[key];
+
+            if (!preloadA || !src) return;
+
+            // reuse same video element (important for performance)
+            preloadA.src = src;
+            preloadA.load();
+
+            if (!overlaycanvas.contains(preloadA)) {
+                overlaycanvas.appendChild(preloadA);
+            }
+
+            preloadA.style.display = "block";
+            preloadA.style.position = "absolute";
+            preloadA.style.bottom = "0px";
+            preloadA.style.left = "50%";
+            preloadA.style.transform = "translateX(-50%)";
+
+            preloadA.style.width = "200px";  // adjust size here
+            preloadA.style.height = "auto";
+            preloadA.style.zIndex = "9999";
+
+            preloadA.currentTime = 0;
+            preloadA.loop = false;
+
+            preloadA.onended = () => {
+                preloadA.style.display = "none";
+            };
+
+            preloadA.play().catch(err => console.log("stamp play failed:", err));
+        }
+
+        setInterval(() => {
+            if (isBusy) return;
+
+            if (Math.random() < 0.3) {
+                playRandomStamp();
+            }
+
+        }, 5000);
+        // setInterval(() => {
+        //     if (!preloadA) return;
+
+        //     console.log({
+        //         paused: preloadA.paused,
+        //         currentTime: preloadA.currentTime,
+        //         readyState: preloadA.readyState,
+        //         src: preloadA.currentSrc
         //     });
-        // }
-
-        // function handlePixelChange() {
-        //     pixelanimatin();
-        // }
-        // function getAnimationKey() {
-        //     console(pixelSize);
-        //     if (pixelSize >= 25) return "big";
-
-        //     if (pixelSize <= 10) return "small";
-        //     return "magnet";
-        // }
-
-
+        // }, 5000);
 
         document.onkeydown = (e) => {
             if (!isNaN(e.key)) {
@@ -453,11 +526,11 @@
                     break;
                 case "ArrowUp":
                     pixelSize += 0.45
-                    //handlePixelChange();
+                    handlePixelChange();
                     break;
                 case "ArrowDown":
                     if (pixelSize > 1.45) pixelSize -= 0.45
-                    //handlePixelChange();
+                    handlePixelChange();
                     break;
                 case "r":
                     if (!isNaN(num)) thresholdR = num;
