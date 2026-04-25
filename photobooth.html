@@ -355,6 +355,7 @@
                 preloadA.style.display = "none";
                 console.log("video ended");
                 preloadA.pause();
+                isBusy = false;
             };
 
 
@@ -376,7 +377,7 @@
             const key = getAnimationKey();
 
 
-            if (key === lastPixelKey) return;
+            if (key === lastPixelKey && Math.random() < 0.7) return;
 
             lastPixelKey = key;
 
@@ -388,6 +389,7 @@
             if (!preloadA.src.includes(newSrc)) {
                 preloadA.src = newSrc;
                 preloadA.load();
+
             }
 
 
@@ -404,6 +406,7 @@
             preloadA.onended = () => {
                 preloadA.style.display = "none";
                 preloadA.pause();
+
             };
 
             preloadA.play()
@@ -413,6 +416,11 @@
                 .catch(err => {
                     console.log("PLAY FAILED:", err);
                 });
+        }
+
+
+        function setScale(scale) {
+            preloadA.style.transform = `translateX(-50%)  scale(${scale})`;
         }
 
         function handlePixelChange() {
@@ -452,11 +460,11 @@
 
             preloadA.style.display = "block";
             preloadA.style.position = "absolute";
-            preloadA.style.bottom = "0px";
+            preloadA.style.bottom = "-270px";
             preloadA.style.left = "50%";
-            preloadA.style.transform = "translateX(-50%)";
+            preloadA.style.transform = "translateX(-50%) scale(0.3)";
 
-            preloadA.style.width = "200px";  // adjust size here
+            // preloadA.style.width = "200px";  // adjust size here
             preloadA.style.height = "auto";
             preloadA.style.zIndex = "9999";
 
@@ -465,6 +473,7 @@
 
             preloadA.onended = () => {
                 preloadA.style.display = "none";
+                resetOverlayVideoState();
             };
 
             preloadA.play().catch(err => console.log("stamp play failed:", err));
@@ -488,6 +497,17 @@
         //         src: preloadA.currentSrc
         //     });
         // }, 5000);
+
+
+
+        function resetOverlayVideoState() {
+            preloadA.style.display = "none";
+            preloadA.style.bottom = "0px";
+            preloadA.style.left = "0px";
+            preloadA.style.transform = "none";
+            preloadA.style.height = "auto";
+            preloadA.style.zIndex = "20";
+        }
 
         document.onkeydown = (e) => {
             if (!isNaN(e.key)) {
