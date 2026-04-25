@@ -250,16 +250,19 @@
 
         let canphoto = true;
         function saveImage() {
-            outputCanvas.toBlob((blob) => {
-                let url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url;
-                a.download = url
-                document.body.appendChild(a)
-                a.click()
-                document.body.removeChild(a)
-                picanimation();
-            });
+            picanimation();
+            setTimeout(() => {
+                outputCanvas.toBlob((blob) => {
+                    let url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url;
+                    a.download = url
+                    document.body.appendChild(a)
+                    a.click()
+                    document.body.removeChild(a)
+                });
+            }, 5000);
+
         }
 
         function randomString(length) {
