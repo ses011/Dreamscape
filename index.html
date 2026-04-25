@@ -7,11 +7,49 @@
 
     </title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        #countdownOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(242, 242, 242, 0.93);
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+        }
+        #countdownOverlay.visible {
+            display: flex;
+        }
+        #countdownLabel {
+            font-family: 'Neue Haas Grotesk Display Pro', 'Helvetica Neue', Arial, sans-serif;
+            font-weight: 400;
+            font-size: 42px;
+            color: #000;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+        #countdownNumber {
+            font-family: 'Neue Haas Grotesk Display Pro', 'Helvetica Neue', Arial, sans-serif;
+            font-weight: 400;
+            font-size: 273px;
+            color: #000;
+            line-height: 1;
+            letter-spacing: -0.04em;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
     <script async src="opencv.js" onload="onOpenCvReady();"></script>
 </head>
 
 <body>
     <video id="videoInput" width="640" height="480" hidden="true"></video>
+
+    <div id="countdownOverlay">
+        <p id="countdownLabel">Snapping picture in</p>
+        <p id="countdownNumber">3</p>
+    </div>
 
     <div class="inputoutput">
         <canvas id="canvasOutput"></canvas>
@@ -22,6 +60,29 @@
         const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
         const outputCanvas = document.getElementById('canvasOutput');
         const OUTPUT_SIZE = 1080;
+
+        // MediaPipe person mask — updated async, used each pixelate frame
+        let personMaskCanvas = null;
+        let personMaskCtx = null;
+        const scaledMaskCanvas = document.createElement('canvas');
+        scaledMaskCanvas.width = OUTPUT_SIZE;
+        scaledMaskCanvas.height = OUTPUT_SIZE;
+        const scaledMaskCtx = scaledMaskCanvas.getContext('2d', { willReadFrequently: true });
+
+        const pixelTiles = { dark: null, mid: null, midlight: null, light: null };
+        (function loadPixelTiles() {
+            const map = {
+                dark:     'assets/images/pixel-darktone-1.png',
+                mid:      'assets/images/pixel-midtone-1.png',
+                midlight: 'assets/images/pixel-midlighttone-1.png',
+                light:    'assets/images/pixel-lighttone-1.png'
+            };
+            for (const [key, src] of Object.entries(map)) {
+                const img = new Image();
+                img.onload = () => { pixelTiles[key] = img; };
+                img.src = src;
+            }
+        })();
         outputCanvas.width = OUTPUT_SIZE;
         outputCanvas.height = OUTPUT_SIZE;
         const FPS = 30;
@@ -38,6 +99,30 @@
         let streaming;
         let bgSubtractor;
 
+        function initSegmentation() {
+            const seg = new SelfieSegmentation({
+                locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`
+            });
+            seg.setOptions({ modelSelection: 1 });
+            personMaskCanvas = document.createElement('canvas');
+            personMaskCtx = personMaskCanvas.getContext('2d', { willReadFrequently: true });
+            seg.onResults(results => {
+                const w = results.segmentationMask.width;
+                const h = results.segmentationMask.height;
+                if (personMaskCanvas.width !== w) personMaskCanvas.width = w;
+                if (personMaskCanvas.height !== h) personMaskCanvas.height = h;
+                personMaskCtx.fillStyle = '#000';
+                personMaskCtx.fillRect(0, 0, w, h);
+                personMaskCtx.drawImage(results.segmentationMask, 0, 0);
+            });
+            (async function loop() {
+                if (streaming && video.readyState >= 2) {
+                    await seg.send({ image: video });
+                }
+                requestAnimationFrame(loop);
+            })();
+        }
+
         function onOpenCvReady() {
             cv['onRuntimeInitialized'] = () => {
                 console.log("OpenCV.js is ready.");
@@ -49,6 +134,7 @@
                     .then(function (stream) {
                         video.srcObject = stream;
                         video.play();
+                        initSegmentation();
                     })
                     .catch(function (err) {
                         console.log("An error occurred! " + err);
@@ -71,6 +157,7 @@
                 bgSubtractor = new cv.BackgroundSubtractorMOG2(500, 16, false);
 
                 setTimeout(processVideo, 0);
+                setTimeout(startCountdown, 2 * 60 * 1000);
             };
         }
 
@@ -159,66 +246,64 @@
         }
 
 
-        function pixelate(src, fgMask) {
-            // Scale source up to output size
+        function pixelate(src) {
+            // Scale source to OUTPUT_SIZE for brightness sampling
             let fullSize = new cv.Mat();
             cv.resize(src, fullSize, new cv.Size(OUTPUT_SIZE, OUTPUT_SIZE), 0, 0, cv.INTER_LINEAR);
-
-            // Convert to grayscale for tone sampling
             let grayMat = new cv.Mat();
             cv.cvtColor(fullSize, grayMat, cv.COLOR_RGBA2GRAY);
+            fullSize.delete();
 
-            // Scale and clean up foreground mask to output size
-            let maskScaled = new cv.Mat();
-            cv.resize(fgMask, maskScaled, new cv.Size(OUTPUT_SIZE, OUTPUT_SIZE), 0, 0, cv.INTER_NEAREST);
-            let kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(9, 9));
-            cv.morphologyEx(maskScaled, maskScaled, cv.MORPH_CLOSE, kernel);
-            cv.dilate(maskScaled, maskScaled, kernel);
-            kernel.delete();
+            // Get person mask from MediaPipe scaled to OUTPUT_SIZE
+            // Clear to black first so stale pixels don't bleed; person = white (r=255), bg = black (r=0)
+            let personData = null;
+            if (personMaskCanvas && personMaskCanvas.width > 0) {
+                scaledMaskCtx.fillStyle = '#000';
+                scaledMaskCtx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+                scaledMaskCtx.drawImage(personMaskCanvas, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+                personData = scaledMaskCtx.getImageData(0, 0, OUTPUT_SIZE, OUTPUT_SIZE).data;
+            }
 
-            // #f2f2f2 background canvas
-            dst = new cv.Mat(OUTPUT_SIZE, OUTPUT_SIZE, cv.CV_8UC4);
-            dst.setTo(new cv.Scalar(242, 242, 242, 255));
+            const ctx = outputCanvas.getContext('2d');
+            ctx.fillStyle = '#01212C';
+            ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
 
             for (let y = 0; y < OUTPUT_SIZE; y += pixelSize) {
                 for (let x = 0; x < OUTPUT_SIZE; x += pixelSize) {
                     const endY = Math.min(y + pixelSize, OUTPUT_SIZE);
                     const endX = Math.min(x + pixelSize, OUTPUT_SIZE);
 
-                    // Average brightness and foreground coverage of this square
-                    let sum = 0, fgSum = 0, count = 0;
+                    let brightnessSum = 0, personSum = 0, count = 0;
                     for (let dy = y; dy < endY; dy++) {
                         for (let dx = x; dx < endX; dx++) {
-                            sum   += grayMat.data[dy * OUTPUT_SIZE + dx];
-                            fgSum += maskScaled.data[dy * OUTPUT_SIZE + dx];
+                            const i = dy * OUTPUT_SIZE + dx;
+                            brightnessSum += grayMat.data[i];
+                            if (personData) {
+                                // Use whichever channel carries the mask — red after black clear, or alpha
+                                const r = personData[i * 4];
+                                const a = personData[i * 4 + 3];
+                                personSum += Math.max(r, a);
+                            }
                             count++;
                         }
                     }
 
-                    // Skip background squares — leave them as #f2f2f2
-                    if (fgSum / count < 128) continue;
+                    // Skip cells that are not the person — if mask isn't ready yet, skip everything
+                    if (!personData || personSum / count < 128) continue;
 
-                    // Map average brightness to 3 tones: black / gray / white
-                    const avg = sum / count;
-                    let tone;
-                    if (avg < 85)       tone = 0;
-                    else if (avg < 170) tone = 128;
-                    else                tone = 255;
+                    const avg = brightnessSum / count;
+                    let tile;
+                    if (avg < 64)       tile = pixelTiles.dark;
+                    else if (avg < 120) tile = pixelTiles.mid;
+                    else if (avg < 155) tile = pixelTiles.midlight;
+                    else                tile = pixelTiles.light;
 
-                    cv.rectangle(
-                        dst,
-                        new cv.Point(x, y),
-                        new cv.Point(endX - 1, endY - 1),
-                        new cv.Scalar(tone, tone, tone, 255),
-                        -1
-                    );
+                    if (tile) ctx.drawImage(tile, x, y, endX - x, endY - y);
                 }
             }
 
-            fullSize.delete();
             grayMat.delete();
-            maskScaled.delete();
-            return dst;
+            dst = new cv.Mat(OUTPUT_SIZE, OUTPUT_SIZE, cv.CV_8UC4);
         }
 
         function cartoon(src) {
@@ -347,7 +432,7 @@
                     applyOperation(cartoon);
                     break;
                 case "pixelate":
-                    pixelate(src, fgMask);
+                    pixelate(src);
                     break;
                 default:
                     applyOperation(passthrough)
@@ -359,14 +444,16 @@
             }
             fgMask.delete();
 
-            // Upscale to output canvas size (pixelate already outputs at OUTPUT_SIZE)
-            if (dst.cols !== OUTPUT_SIZE || dst.rows !== OUTPUT_SIZE) {
-                let displayMat = new cv.Mat();
-                cv.resize(dst, displayMat, new cv.Size(OUTPUT_SIZE, OUTPUT_SIZE), 0, 0, cv.INTER_NEAREST);
-                cv.imshow(outputCanvas, displayMat);
-                displayMat.delete();
-            } else {
-                cv.imshow(outputCanvas, dst);
+            // pixelate draws directly to the canvas 2D context — skip cv.imshow for it
+            if (filter !== "pixelate") {
+                if (dst.cols !== OUTPUT_SIZE || dst.rows !== OUTPUT_SIZE) {
+                    let displayMat = new cv.Mat();
+                    cv.resize(dst, displayMat, new cv.Size(OUTPUT_SIZE, OUTPUT_SIZE), 0, 0, cv.INTER_NEAREST);
+                    cv.imshow(outputCanvas, displayMat);
+                    displayMat.delete();
+                } else {
+                    cv.imshow(outputCanvas, dst);
+                }
             }
 
 
@@ -403,6 +490,32 @@
 
         }
 
+
+        let countdownActive = false;
+
+        function startCountdown() {
+            if (countdownActive) return;
+            countdownActive = true;
+
+            const overlay = document.getElementById('countdownOverlay');
+            const numEl = document.getElementById('countdownNumber');
+            overlay.classList.add('visible');
+
+            let count = 3;
+            numEl.textContent = count;
+
+            const tick = setInterval(() => {
+                count--;
+                if (count <= 0) {
+                    clearInterval(tick);
+                    overlay.classList.remove('visible');
+                    countdownActive = false;
+                    saveImage();
+                } else {
+                    numEl.textContent = count;
+                }
+            }, 1000);
+        }
 
         function randomString(length) {
             var result = '';
@@ -448,6 +561,9 @@
                     break;
                 case "f":
                     saveImage();
+                    break;
+                case "Enter":
+                    startCountdown();
                     break;
             }
         }
