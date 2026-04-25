@@ -64,18 +64,20 @@
         // MediaPipe person mask — updated async, used each pixelate frame
         let personMaskCanvas = null;
         let personMaskCtx = null;
+        let personMaskReady = false;
         const scaledMaskCanvas = document.createElement('canvas');
         scaledMaskCanvas.width = OUTPUT_SIZE;
         scaledMaskCanvas.height = OUTPUT_SIZE;
         const scaledMaskCtx = scaledMaskCanvas.getContext('2d', { willReadFrequently: true });
 
-        const pixelTiles = { dark: null, mid: null, midlight: null, light: null };
+        const pixelTiles = { dark: null, mid: null, midlight: null, light: null, splitleft: null };
         (function loadPixelTiles() {
             const map = {
-                dark:     'assets/images/pixel-darktone-1.png',
-                mid:      'assets/images/pixel-midtone-1.png',
-                midlight: 'assets/images/pixel-midlighttone-1.png',
-                light:    'assets/images/pixel-lighttone-1.png'
+                dark:      'assets/images/pixel-darktone-1.png',
+                mid:       'assets/images/pixel-midtone-1.png',
+                midlight:  'assets/images/pixel-midlighttone-1.png',
+                light:     'assets/images/pixel-lighttone-1.png',
+                splitleft: 'assets/images/pixel-splitleft-1.png'
             };
             for (const [key, src] of Object.entries(map)) {
                 const img = new Image();
@@ -114,6 +116,7 @@
                 personMaskCtx.fillStyle = '#000';
                 personMaskCtx.fillRect(0, 0, w, h);
                 personMaskCtx.drawImage(results.segmentationMask, 0, 0);
+                personMaskReady = true;
             });
             (async function loop() {
                 if (streaming && video.readyState >= 2) {
@@ -255,9 +258,9 @@
             fullSize.delete();
 
             // Get person mask from MediaPipe scaled to OUTPUT_SIZE
-            // Clear to black first so stale pixels don't bleed; person = white (r=255), bg = black (r=0)
+            // Clear to black first — after draw: person=white (r=255), background=black (r=0)
             let personData = null;
-            if (personMaskCanvas && personMaskCanvas.width > 0) {
+            if (personMaskReady) {
                 scaledMaskCtx.fillStyle = '#000';
                 scaledMaskCtx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
                 scaledMaskCtx.drawImage(personMaskCanvas, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
@@ -268,6 +271,30 @@
             ctx.fillStyle = '#01212C';
             ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
 
+            // First pass: split duplicate drawn underneath
+            if (showSplit && pixelTiles.splitleft && personData) {
+                for (let y = 0; y < OUTPUT_SIZE; y += pixelSize) {
+                    for (let x = 0; x < OUTPUT_SIZE; x += pixelSize) {
+                        const endY = Math.min(y + pixelSize, OUTPUT_SIZE);
+                        const endX = Math.min(x + pixelSize, OUTPUT_SIZE);
+
+                        let pSum = 0, count = 0;
+                        for (let dy = y; dy < endY; dy++) {
+                            for (let dx = x; dx < endX; dx++) {
+                                pSum += personData[(dy * OUTPUT_SIZE + dx) * 4];
+                                count++;
+                            }
+                        }
+                        if (pSum / count < 128) continue;
+
+                        const drawX = x - splitOffset;
+                        if (drawX + endX - x <= 0 || drawX >= OUTPUT_SIZE) continue;
+                        ctx.drawImage(pixelTiles.splitleft, drawX, y, endX - x, endY - y);
+                    }
+                }
+            }
+
+            // Second pass: main pixel tones drawn on top
             for (let y = 0; y < OUTPUT_SIZE; y += pixelSize) {
                 for (let x = 0; x < OUTPUT_SIZE; x += pixelSize) {
                     const endY = Math.min(y + pixelSize, OUTPUT_SIZE);
@@ -278,17 +305,11 @@
                         for (let dx = x; dx < endX; dx++) {
                             const i = dy * OUTPUT_SIZE + dx;
                             brightnessSum += grayMat.data[i];
-                            if (personData) {
-                                // Use whichever channel carries the mask — red after black clear, or alpha
-                                const r = personData[i * 4];
-                                const a = personData[i * 4 + 3];
-                                personSum += Math.max(r, a);
-                            }
+                            if (personData) personSum += personData[i * 4];
                             count++;
                         }
                     }
 
-                    // Skip cells that are not the person — if mask isn't ready yet, skip everything
                     if (!personData || personSum / count < 128) continue;
 
                     const avg = brightnessSum / count;
@@ -491,6 +512,9 @@
         }
 
 
+        let showSplit = false;
+        let splitOffset = 0;
+
         let countdownActive = false;
 
         function startCountdown() {
@@ -541,17 +565,43 @@
                 case "p":
                     filter = "pixelate"
                     break;
+                case "r":
+                    showSplit = !showSplit;
+                    if (!showSplit) splitOffset = 0;
+                    break;
+                case "0":
+                    if (showSplit) splitOffset = 0;
+                    break;
                 case "1":
-                    pixelSize = 5
+                    if (showSplit) splitOffset += pixelSize;
+                    else pixelSize = 5;
                     break;
                 case "2":
-                    pixelSize = 10
+                    if (showSplit) splitOffset += pixelSize * 2;
+                    else pixelSize = 10;
                     break;
                 case "3":
-                    pixelSize = 15
+                    if (showSplit) splitOffset += pixelSize * 3;
+                    else pixelSize = 15;
                     break;
                 case "4":
-                    pixelSize = 20
+                    if (showSplit) splitOffset += pixelSize * 4;
+                    else pixelSize = 20;
+                    break;
+                case "5":
+                    if (showSplit) splitOffset += pixelSize * 5;
+                    break;
+                case "6":
+                    if (showSplit) splitOffset += pixelSize * 6;
+                    break;
+                case "7":
+                    if (showSplit) splitOffset += pixelSize * 7;
+                    break;
+                case "8":
+                    if (showSplit) splitOffset += pixelSize * 8;
+                    break;
+                case "9":
+                    if (showSplit) splitOffset += pixelSize * 9;
                     break;
                 case "ArrowUp":
                     pixelSize++
